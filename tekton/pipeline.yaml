@@ -1,0 +1,51 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ruby-app-pipeline
+  namespace: ruby-app
+spec:
+  description: Build and push Ruby application
+  params:
+  - name: repo-url
+    type: string
+    description: The git repository URL to clone from
+  - name: image-reference
+    type: string
+    description: The image reference to build and push
+  - name: git-revision
+    type: string
+    description: The git revision to checkout
+    default: "main"
+  workspaces:
+  - name: shared-data
+    description: Shared workspace for source code
+  - name: docker-credentials
+    description: Docker registry credentials
+  tasks:
+  - name: fetch-source
+    taskRef:
+      name: git-clone
+    workspaces:
+    - name: output
+      workspace: shared-data
+    params:
+    - name: url
+      value: $(params.repo-url)
+    - name: revision
+      value: $(params.git-revision)
+  - name: build-push
+    runAfter: ["fetch-source"]
+    taskRef:
+      name: kaniko-build
+    workspaces:
+    - name: source
+      workspace: shared-data
+    - name: dockerconfig
+      workspace: docker-credentials
+    params:
+    - name: IMAGE
+      value: $(params.image-reference)
+    - name: DOCKERFILE
+      value: ./app/Dockerfile
+    - name: CONTEXT
+      value: ./app

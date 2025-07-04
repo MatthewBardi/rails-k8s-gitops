@@ -1,0 +1,21 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: test-working-pipeline
+  namespace: ruby-app
+spec:
+  pipelineRef:
+    name: working-pipeline
+  params:
+  - name: repo-url
+    value: https://github.com/MatthewBardi/rails-k8s-gitops.git
+  - name: image-reference
+    value: ifeanyb/ruby-sinatra-app:working
+  workspaces:
+  - name: shared-data
+    volumeClaimTemplate:
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi

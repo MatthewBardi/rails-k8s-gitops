@@ -1,0 +1,78 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: kaniko-simple
+  namespace: ruby-app
+spec:
+  params:
+  - name: IMAGE
+    type: string
+  - name: DOCKERFILE
+    type: string
+    default: ./Dockerfile
+  - name: CONTEXT
+    type: string
+    default: ./
+  workspaces:
+  - name: source
+  steps:
+  - name: build-and-push
+    workingDir: $(workspaces.source.path)
+    image: gcr.io/kaniko-project/executor:latest
+    env:
+    - name: DOCKER_CONFIG
+      value: /kaniko/.docker
+    args:
+    - --dockerfile=$(params.DOCKERFILE)
+    - --context=$(workspaces.source.path)/$(params.CONTEXT)
+    - --destination=$(params.IMAGE)
+    - --skip-tls-verify
+    - --verbosity=debug
+    volumeMounts:
+    - name: docker-config
+      mountPath: /kaniko/.docker
+    volumes:
+    - name: docker-config
+      secret:
+        secretName: regcred
+        items:
+        - key: .dockerconfigjson
+          path: config.json
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: simple-pipeline
+  namespace: ruby-app
+spec:
+  params:
+  - name: repo-url
+    type: string
+  - name: image-reference
+    type: string
+  workspaces:
+  - name: shared-data
+  tasks:
+  - name: git-clone
+    taskRef:
+      name: git-clone
+    workspaces:
+    - name: output
+      workspace: shared-data
+    params:
+    - name: url
+      value: $(params.repo-url)
+  - name: build-push
+    runAfter: ["git-clone"]
+    taskRef:
+      name: kaniko-simple
+    workspaces:
+    - name: source
+      workspace: shared-data
+    params:
+    - name: IMAGE
+      value: $(params.image-reference)
+    - name: DOCKERFILE
+      value: ./app/Dockerfile
+    - name: CONTEXT
+      value: ./app

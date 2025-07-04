@@ -1,0 +1,28 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: ruby-app-pipeline-final-attempt
+  namespace: ruby-app
+spec:
+  serviceAccountName: tekton-robot
+  pipelineRef:
+    name: ruby-app-pipeline
+  params:
+  - name: repo-url
+    value: https://github.com/MatthewBardi/rails-k8s-gitops.git
+  - name: image-reference
+    value: ifeanyb/ruby-sinatra-app:v1.0
+  - name: git-revision
+    value: main
+  workspaces:
+  - name: shared-data
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+  - name: docker-credentials
+    secret:
+      secretName: regcred

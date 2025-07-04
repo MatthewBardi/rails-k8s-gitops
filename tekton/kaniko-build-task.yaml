@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: kaniko-build
+  namespace: ruby-app
+spec:
+  description: Build and push container image using Kaniko
+  params:
+  - name: IMAGE
+    description: Name (reference) of the image to build
+    type: string
+  - name: DOCKERFILE
+    description: Path to the Dockerfile to build
+    default: ./Dockerfile
+    type: string
+  - name: CONTEXT
+    description: The build context used by Kaniko
+    default: ./
+    type: string
+  workspaces:
+  - name: source
+    description: Holds the context and Dockerfile
+  - name: dockerconfig
+    description: Includes a docker `config.json`
+    optional: true
+    mountPath: /kaniko/.docker
+  steps:
+  - name: build-and-push
+    workingDir: $(workspaces.source.path)
+    image: gcr.io/kaniko-project/executor:latest
+    args:
+    - --dockerfile=$(params.DOCKERFILE)
+    - --context=$(workspaces.source.path)/$(params.CONTEXT)
+    - --destination=$(params.IMAGE)
+    - --cache=true
+    - --cache-ttl=24h
+    - --skip-tls-verify
+    env:
+    - name: DOCKER_CONFIG
+      value: /kaniko/.docker
+    securityContext:
+      runAsUser: 0
