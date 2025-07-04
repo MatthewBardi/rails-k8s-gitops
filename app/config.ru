@@ -38,4 +38,4 @@ class App < Sinatra::Base
   end
 end
 
-run App
+run App# Updated for demo
